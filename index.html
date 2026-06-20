@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#0d2b3e" />
+    <meta name="description" content="The Royal Study — resuelve estudios de ajedrez en 3D con el mínimo número de movimientos. Inspirado en el rompecabezas de Philos." />
+    <title>The Royal Study · Chess Puzzle 3D</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene"></canvas>
+
+      <!-- Loading veil -->
+      <div id="loader" class="loader">
+        <div class="loader__crown">♛</div>
+        <div class="loader__title">The Royal Study</div>
+        <div class="loader__bar"><span></span></div>
+      </div>
+
+      <!-- Top bar -->
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand__mark">♛</span>
+          <span class="brand__name">The Royal Study</span>
+        </div>
+        <div class="stats">
+          <div class="stat"><span class="stat__label">Nivel</span><span id="stat-level" class="stat__value">—</span></div>
+          <div class="stat"><span class="stat__label">Estudio</span><span id="stat-puzzle" class="stat__value">—</span></div>
+          <div class="stat"><span class="stat__label">Jugadas</span><span id="stat-moves" class="stat__value">0</span></div>
+          <div class="stat"><span class="stat__label">Par</span><span id="stat-par" class="stat__value">—</span></div>
+          <div class="stat"><span class="stat__label">Puntos</span><span id="stat-score" class="stat__value">0</span></div>
+        </div>
+      </header>
+
+      <!-- Bottom toolbar -->
+      <footer class="toolbar">
+        <button id="btn-undo" class="btn" title="Deshacer (U)">↩ Deshacer</button>
+        <button id="btn-reset" class="btn" title="Reiniciar (R)">⟳ Reiniciar</button>
+        <button id="btn-hint" class="btn" title="Pista (H)">💡 Pista</button>
+        <button id="btn-prev" class="btn btn--ghost" title="Anterior">◀</button>
+        <button id="btn-next" class="btn btn--ghost" title="Siguiente">▶</button>
+        <button id="btn-help" class="btn btn--ghost" title="Cómo jugar (?)">?</button>
+      </footer>
+
+      <!-- Message / banner -->
+      <div id="banner" class="banner"></div>
+
+      <!-- Help modal -->
+      <div id="help" class="modal" hidden>
+        <div class="modal__card">
+          <h2>Cómo jugar</h2>
+          <p>
+            <strong>The Royal Study</strong> es un estudio de ajedrez solitario. En el tablero hay
+            varias piezas: <em>cada jugada debe capturar otra pieza</em>.
+          </p>
+          <ul>
+            <li>Toca una pieza para seleccionarla; las capturas válidas se iluminan en oro.</li>
+            <li>Toca una casilla iluminada para capturar.</li>
+            <li>Resuelves el estudio cuando queda <strong>una sola pieza</strong>.</li>
+            <li>El <strong>Par</strong> es el mínimo de jugadas. Resolverlo en el par da más puntos.</li>
+          </ul>
+          <p class="muted">Atajos: arrastra para orbitar · rueda para zoom · U deshacer · R reiniciar · H pista.</p>
+          <button id="help-close" class="btn btn--primary">¡Entendido!</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
