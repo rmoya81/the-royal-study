@@ -5,6 +5,7 @@
 // minimum number of moves (the "par") and a concrete shortest line for hints.
 
 import { allMoves, applyMove, cloneState, isSolved } from './engine.js';
+import { allowedGoals } from './transforms.js';
 
 // Order-independent signature of a position (piece type + square).
 function key(state) {
@@ -65,3 +66,21 @@ export function hintMove(state, goal) {
   const line = solve(state, goal);
   return line && line.length ? line[0] : null;
 }
+
+/**
+ * Minimum total cost to solve when the card may be transformed, where
+ * `mode` is 'none' | 'rot' | 'all'. The cost of an orientation is its action
+ * cost (rotations/mirrors) plus the moves to reach that oriented goal.
+ * Returns { par, key, goal } for the best orientation, or null if unreachable.
+ */
+export function bestPlan(state, goal, mode = 'none') {
+  let best = null;
+  for (const opt of allowedGoals(goal, mode)) {
+    const moves = minMoves(state, opt.goal);
+    if (moves == null) continue;
+    const total = moves + opt.cost;
+    if (!best || total < best.par) best = { par: total, key: opt.key, goal: opt.goal };
+  }
+  return best;
+}
+

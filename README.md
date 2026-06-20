@@ -20,6 +20,9 @@ jugadas** y antes de que se agote el **reloj de arena**.
   cámara orbital.
 - **Reglamento fiel a Philos**: sin capturas, sin saltar (salvo el caballo),
   alfil en casillas oscuras, caballo fuera del centro, y **reloj de arena**.
+- **Dos modos**: campaña en **solitario** (con giros/reflejos de carta en los
+  niveles 2 y 3) y **2 jugadores con puja** (estimar jugadas, arrastre de
+  posición entre rondas, gana quien llega a 6 puntos).
 - **24 estudios verificados** en 3 niveles (Aprendiz · Maestro · Gran Maestro).
   Cada estudio (posición inicial + objetivo) se genera y el **mínimo de jugadas
   (par)** se calcula con un solver BFS propio.
@@ -37,12 +40,26 @@ jugadas** y antes de que se agote el **reloj de arena**.
 5. Atajos: arrastrar = orbitar · rueda = zoom · `U` deshacer · `R` reiniciar ·
    `H` pista · `←`/`→` cambiar estudio.
 
-### Niveles
+### Niveles y transformaciones de carta
 
-El reglamento original añade variantes en los niveles superiores que se juegan
-con la carta física (girarla 90°/180° o reflejarla, cada acción cuesta jugadas).
-Esta versión digital se centra en el modo en solitario: la dificultad crece con
-el número de piezas y el mínimo de jugadas (Aprendiz → Maestro → Gran Maestro).
+- **Aprendiz**: reglas básicas.
+- **Maestro**: puedes **girar** la carta (↺ ↻). Cada giro de 90° cuesta 1
+  jugada (180° = 2). El mínimo ya cuenta el giro óptimo.
+- **Gran Maestro**: además puedes **reflejar** la carta (⇄ ⇅), cada reflejo
+  cuesta 1 jugada. En estos niveles, transformar la carta **siempre forma parte
+  de la solución óptima** — encontrar la orientación adecuada es el reto.
+
+### Modo 2 Jugadores (puja)
+
+Pulsa **«2 Jugadores»** en la cabecera. Por ronda:
+
+1. El **Jugador 1** apuesta en cuántas jugadas resolverá la carta.
+2. El **Jugador 2** puede **aceptar** el reto o **apostar menos**.
+3. Quien tenga la apuesta **más baja** debe resolverlo dentro de esas jugadas
+   (con el reloj de arena). Si lo logra, gana el punto; si no, el punto es para
+   el rival (también puede **rendirse**).
+4. Las piezas **se quedan** donde acaben y se reparte una nueva carta.
+5. Gana quien llega primero a **6 puntos**.
 
 ## 🚀 Desarrollo
 
