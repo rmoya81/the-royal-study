@@ -4,10 +4,9 @@ import { LEVELS } from './game/puzzles.js';
 import {
   createState,
   cloneState,
-  captureTargets,
+  legalMoves,
   applyMove,
   isSolved,
-  isStuck,
 } from './game/engine.js';
 import { hintMove } from './game/solver.js';
 import { Studio } from './three/scene.js';
@@ -19,6 +18,7 @@ const ui = {
   puzzle: $('stat-puzzle'),
   moves: $('stat-moves'),
   par: $('stat-par'),
+  time: $('stat-time'),
   score: $('stat-score'),
   banner: $('banner'),
   loader: $('loader'),
@@ -30,21 +30,25 @@ const game = {
   li: 0, // level index
   pi: 0, // puzzle index
   state: null,
+  goal: null,
   par: 0,
   moves: 0,
   score: 0,
-  history: [], // snapshots for undo
+  history: [],
   selected: null,
   solved: false,
+  timeLeft: 0,
+  timerId: null,
 };
 
-function currentPuzzle() {
-  return LEVELS[game.li].puzzles[game.pi];
-}
+const currentPuzzle = () => LEVELS[game.li].puzzles[game.pi];
+// Generous time budget that scales with the study's difficulty (the hourglass).
+const timeBudget = (par) => par * 12 + 25;
 
-function loadPuzzle(reframe = true) {
+function loadPuzzle() {
   const puzzle = currentPuzzle();
   game.state = createState(puzzle);
+  game.goal = puzzle.goal;
   game.par = puzzle.par;
   game.moves = 0;
   game.history = [];
@@ -52,9 +56,11 @@ function loadPuzzle(reframe = true) {
   game.solved = false;
 
   studio.loadPosition(game.state);
-  if (!reframe) {/* loadPosition reframes; fine for first load */}
+  studio.showGoal(game.goal);
+  refreshGoalProgress();
+  startTimer(timeBudget(game.par));
   refreshHud();
-  banner(`Estudio ${game.pi + 1} · ${LEVELS[game.li].name}`, 'info', 1600);
+  banner(`Estudio ${game.pi + 1} · ${LEVELS[game.li].name} — coloca las piezas en las siluetas doradas`, 'info', 2200);
 }
 
 function refreshHud() {
@@ -65,12 +71,43 @@ function refreshHud() {
   ui.score.textContent = String(game.score);
 }
 
-let bannerTimer = null;
-function banner(text, kind = 'info', ms = 0) {
-  ui.banner.textContent = text;
-  ui.banner.className = `banner banner--show banner--${kind}`;
-  clearTimeout(bannerTimer);
-  if (ms) bannerTimer = setTimeout(() => (ui.banner.className = 'banner'), ms);
+function refreshGoalProgress() {
+  const satisfied = game.goal.filter((g) =>
+    game.state.pieces.some((p) => p.type === g.type && p.c === g.c && p.r === g.r),
+  );
+  studio.updateGoalProgress(satisfied);
+}
+
+// --- hourglass timer -------------------------------------------------------
+
+function startTimer(seconds) {
+  stopTimer();
+  game.timeLeft = seconds;
+  renderTime();
+  game.timerId = setInterval(() => {
+    game.timeLeft -= 1;
+    renderTime();
+    if (game.timeLeft <= 0) onTimeUp();
+  }, 1000);
+}
+
+function stopTimer() {
+  if (game.timerId) clearInterval(game.timerId);
+  game.timerId = null;
+}
+
+function renderTime() {
+  const t = Math.max(0, game.timeLeft);
+  const m = Math.floor(t / 60);
+  const s = String(t % 60).padStart(2, '0');
+  ui.time.textContent = `${m}:${s}`;
+  ui.time.style.color = t <= 10 ? '#f0795a' : '';
+}
+
+function onTimeUp() {
+  stopTimer();
+  banner('⏳ ¡Se acabó el tiempo! Reiniciando el estudio…', 'warn', 2200);
+  setTimeout(() => reset(), 1400);
 }
 
 // --- interaction -----------------------------------------------------------
@@ -79,29 +116,28 @@ studio.onPickPiece = (id) => {
   if (studio.busy || game.solved) return;
   const piece = game.state.pieces.find((p) => p.id === id);
   if (!piece) return;
-  const targets = captureTargets(game.state, piece);
-  if (targets.length === 0) {
-    banner('Esa pieza no puede capturar', 'warn', 1200);
+  const moves = legalMoves(game.state, piece);
+  if (moves.length === 0) {
+    banner('Esa pieza no tiene movimientos disponibles', 'warn', 1200);
     return;
   }
   game.selected = id;
   studio.select(id);
-  studio.showTargets(targets);
+  studio.showTargets(moves);
 };
 
 studio.onPickSquare = (c, r) => {
   if (studio.busy || game.solved || !game.selected) return;
   const piece = game.state.pieces.find((p) => p.id === game.selected);
   if (!piece) return;
-  const target = captureTargets(game.state, piece).find((t) => t.c === c && t.r === r);
-  if (!target) {
-    // Clicked elsewhere: deselect.
+  const ok = legalMoves(game.state, piece).some((t) => t.c === c && t.r === r);
+  if (!ok) {
     game.selected = null;
     studio.select(null);
     studio.clearMarkers();
     return;
   }
-  doMove({ pieceId: piece.id, from: { c: piece.c, r: piece.r }, to: { c, r }, targetId: target.targetId });
+  doMove({ pieceId: piece.id, from: { c: piece.c, r: piece.r }, to: { c, r } });
 };
 
 async function doMove(move) {
@@ -113,47 +149,39 @@ async function doMove(move) {
   await studio.animateMove(move);
   applyMove(game.state, move);
   game.moves += 1;
+  refreshGoalProgress();
   refreshHud();
 
-  if (isSolved(game.state)) return onSolved();
-  if (isStuck(game.state)) {
-    banner('Sin capturas posibles — usa Deshacer ↩', 'warn', 2600);
-  }
+  if (isSolved(game.state, game.goal)) onSolved();
 }
 
 function onSolved() {
   game.solved = true;
+  stopTimer();
   const onPar = game.moves <= game.par;
   const gained = onPar ? 2 : 1;
   game.score += gained;
   refreshHud();
   banner(
     onPar
-      ? `¡Estudio resuelto en el par! +${gained} puntos ♛`
-      : `¡Resuelto! +${gained} punto`,
+      ? `¡Resuelto en el mínimo de ${game.par} jugadas! +${gained} puntos ♛`
+      : `¡Resuelto en ${game.moves} jugadas (mínimo ${game.par})! +${gained} punto`,
     'win',
   );
   setTimeout(() => {
-    if (!autoNext()) banner('¡Has completado todos los estudios! 🏆', 'win');
-  }, 1700);
+    if (!goNext()) banner('¡Has completado todos los estudios! 🏆', 'win');
+  }, 1900);
 }
 
 // --- navigation ------------------------------------------------------------
 
-function autoNext() {
-  return goNext();
-}
-
 function goNext() {
   const lvl = LEVELS[game.li];
-  if (game.pi < lvl.puzzles.length - 1) {
-    game.pi += 1;
-  } else if (game.li < LEVELS.length - 1) {
+  if (game.pi < lvl.puzzles.length - 1) game.pi += 1;
+  else if (game.li < LEVELS.length - 1) {
     game.li += 1;
     game.pi = 0;
-  } else {
-    return false;
-  }
+  } else return false;
   loadPuzzle();
   return true;
 }
@@ -174,15 +202,12 @@ function undo() {
   game.solved = false;
   game.selected = null;
   studio.resetPieces(game.state);
+  refreshGoalProgress();
   refreshHud();
 }
 
 function reset() {
   if (studio.busy) return;
-  loadPuzzleSameView();
-}
-
-function loadPuzzleSameView() {
   const puzzle = currentPuzzle();
   game.state = createState(puzzle);
   game.moves = 0;
@@ -190,25 +215,28 @@ function loadPuzzleSameView() {
   game.selected = null;
   game.solved = false;
   studio.resetPieces(game.state);
+  refreshGoalProgress();
+  startTimer(timeBudget(game.par));
   refreshHud();
   banner('Estudio reiniciado ⟳', 'info', 1100);
 }
 
-async function hint() {
+function hint() {
   if (studio.busy || game.solved) return;
-  const move = hintMove(game.state);
+  const move = hintMove(game.state, game.goal);
   if (!move) {
     banner('No hay solución desde aquí — reinicia ⟳', 'warn', 2200);
     return;
   }
-  // Highlight the suggested piece and destination.
   studio.select(move.pieceId);
   studio.flashSquare(move.from.c, move.from.r, 0x4a90d9);
-  studio.flashSquare(move.to.c, move.to.r, 0xffce4d);
-  banner('Pista: mueve la pieza resaltada al destino dorado', 'info', 2400);
+  studio.flashSquare(move.to.c, move.to.r, 0x57c785);
+  banner('Pista: mueve la pieza resaltada a la casilla verde', 'info', 2400);
   setTimeout(() => {
-    studio.select(null);
-    studio.clearMarkers();
+    if (!game.solved) {
+      studio.select(null);
+      studio.clearMarkers();
+    }
   }, 2400);
 }
 
@@ -219,7 +247,7 @@ $('btn-reset').onclick = reset;
 $('btn-hint').onclick = hint;
 $('btn-next').onclick = goNext;
 $('btn-prev').onclick = goPrev;
-$('btn-help').onclick = () => $('help').hidden = false;
+$('btn-help').onclick = () => ($('help').hidden = false);
 $('help-close').onclick = () => ($('help').hidden = true);
 
 window.addEventListener('keydown', (e) => {
@@ -234,10 +262,17 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
+let bannerTimer = null;
+function banner(text, kind = 'info', ms = 0) {
+  ui.banner.textContent = text;
+  ui.banner.className = `banner banner--show banner--${kind}`;
+  clearTimeout(bannerTimer);
+  if (ms) bannerTimer = setTimeout(() => (ui.banner.className = 'banner'), ms);
+}
+
 // --- boot ------------------------------------------------------------------
 
 loadPuzzle();
-// Reveal once the first frame is ready.
 requestAnimationFrame(() => {
   setTimeout(() => ui.loader.classList.add('loader--hidden'), 350);
 });

@@ -1,19 +1,22 @@
-// Offline puzzle generator. Produces solvable solitaire-chess studies by
-// random placement + solver verification, then writes src/game/puzzles.js.
+// Offline puzzle generator for "The Royal Study".
 //
 //   node scripts/generate-puzzles.js
 //
-// Output is deterministic (seeded RNG) so the committed puzzle set is stable.
+// Each study has a start arrangement and a goal arrangement on a 3x3 board.
+// Goals are produced by random-walking legal moves from a valid start, which
+// guarantees reachability; the BFS solver then computes the true "par" (minimum
+// number of moves). Output is deterministic (seeded RNG) so the committed set
+// is stable across builds.
 
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { createState } from '../src/game/engine.js';
+import { createState, allMoves, applyMove, cloneState, isDark, isCentre } from '../src/game/engine.js';
 import { solve } from '../src/game/solver.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// --- tiny seeded PRNG (mulberry32) -----------------------------------------
+// --- seeded PRNG (mulberry32) ----------------------------------------------
 function rng(seed) {
   let a = seed >>> 0;
   return () => {
@@ -25,37 +28,55 @@ function rng(seed) {
   };
 }
 
+const COLS = 3;
+const ROWS = 3;
+
 const LEVELS = [
-  { id: 'aprendiz', name: 'Aprendiz', cols: 4, rows: 4, count: 4, seed: 101, want: 8 },
-  { id: 'maestro', name: 'Maestro', cols: 5, rows: 5, count: 5, seed: 202, want: 8 },
-  { id: 'granmaestro', name: 'Gran Maestro', cols: 5, rows: 5, count: 6, seed: 303, want: 8 },
+  { id: 'aprendiz', name: 'Aprendiz', set: ['R', 'N', 'K'], walk: 5, parMin: 2, parMax: 4, seed: 11, want: 8 },
+  { id: 'maestro', name: 'Maestro', set: ['Q', 'R', 'N', 'K'], walk: 7, parMin: 3, parMax: 6, seed: 22, want: 8 },
+  { id: 'granmaestro', name: 'Gran Maestro', set: ['Q', 'R', 'B', 'N', 'K'], walk: 9, parMin: 4, parMax: 8, seed: 33, want: 8 },
 ];
 
-// Weighted bag of piece types (pawns rarer; they are weak on tiny boards).
-const BAG = ['Q', 'R', 'R', 'B', 'B', 'N', 'N', 'N', 'K', 'P'];
+const tmp = { cols: COLS, rows: ROWS };
+const squares = [];
+for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) squares.push({ c, r });
 
-function randomPuzzle(rand, level) {
-  const used = new Set();
-  const pieces = [];
-  for (let i = 0; i < level.count; i++) {
-    let c, r, key;
-    let type = BAG[Math.floor(rand() * BAG.length)];
-    do {
-      c = Math.floor(rand() * level.cols);
-      r = Math.floor(rand() * level.rows);
-      key = `${c},${r}`;
-    } while (used.has(key));
-    // Keep pawns off the top row so they always have a forward capture option.
-    if (type === 'P' && r === level.rows - 1) r -= 1;
-    used.add(`${c},${r}`);
-    pieces.push({ type, c, r });
+function validSquareFor(type, c, r, used) {
+  if (used.has(`${c},${r}`)) return false;
+  if (type === 'B' && !isDark(c, r)) return false;
+  if (type === 'N' && isCentre(tmp, c, r)) return false;
+  return true;
+}
+
+function randomStart(rand, set) {
+  for (let attempt = 0; attempt < 500; attempt++) {
+    const used = new Set();
+    const pieces = [];
+    let ok = true;
+    for (const type of set) {
+      const choices = squares.filter((s) => validSquareFor(type, s.c, s.r, used));
+      if (!choices.length) { ok = false; break; }
+      const s = choices[Math.floor(rand() * choices.length)];
+      used.add(`${s.c},${s.r}`);
+      pieces.push({ type, c: s.c, r: s.r });
+    }
+    if (ok) return pieces;
   }
-  return { cols: level.cols, rows: level.rows, pieces };
+  return null;
 }
 
-function signature(p) {
-  return p.pieces.map((x) => `${x.type}${x.c},${x.r}`).sort().join('|');
+function randomWalk(rand, startPieces, steps) {
+  const state = createState({ cols: COLS, rows: ROWS, start: startPieces });
+  for (let i = 0; i < steps; i++) {
+    const moves = allMoves(state);
+    if (!moves.length) break;
+    const m = moves[Math.floor(rand() * moves.length)];
+    applyMove(state, m);
+  }
+  return state.pieces.map((p) => ({ type: p.type, c: p.c, r: p.r }));
 }
+
+const sig = (pieces) => pieces.map((p) => `${p.type}${p.c},${p.r}`).sort().join('|');
 
 const levelsOut = [];
 for (const level of LEVELS) {
@@ -63,25 +84,31 @@ for (const level of LEVELS) {
   const found = [];
   const seen = new Set();
   let guard = 0;
-  while (found.length < level.want && guard < 200000) {
+  while (found.length < level.want && guard < 400000) {
     guard++;
-    const puzzle = randomPuzzle(rand, level);
-    const sig = signature(puzzle);
-    if (seen.has(sig)) continue;
-    const line = solve(createState(puzzle));
+    const start = randomStart(rand, level.set);
+    if (!start) continue;
+    const goal = randomWalk(rand, start, level.walk);
+    if (sig(start) === sig(goal)) continue; // goal must differ from start
+
+    const state = createState({ cols: COLS, rows: ROWS, start });
+    const line = solve(state, goal);
     if (!line) continue;
-    // Skip studies whose only line is a trivial straight sweep by one piece.
-    const movers = new Set(line.map((m) => m.pieceId));
-    if (movers.size < 2 && level.count > 3) continue;
-    seen.add(sig);
-    found.push({ ...puzzle, par: line.length });
+    const par = line.length;
+    if (par < level.parMin || par > level.parMax) continue;
+
+    const id = `${sig(start)}=>${sig(goal)}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    found.push({ cols: COLS, rows: ROWS, start, goal, par });
   }
-  console.log(`${level.name}: ${found.length} puzzles (tried ${guard})`);
+  console.log(`${level.name}: ${found.length} studies (tried ${guard})`);
   levelsOut.push({ id: level.id, name: level.name, puzzles: found });
 }
 
 const header = `// AUTO-GENERATED by scripts/generate-puzzles.js — do not edit by hand.
-// Each study is verified solvable; "par" is the minimum number of moves.
+// Each study has start + goal arrangements on a 3x3 board; "par" is the
+// BFS-verified minimum number of moves.
 `;
 const body = `export const LEVELS = ${JSON.stringify(levelsOut, null, 2)};
 `;

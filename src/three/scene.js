@@ -66,12 +66,14 @@ export class Studio {
     this._setupStage();
 
     this.boardGroup = new Group();
+    this.goalGroup = new Group(); // translucent "ghost" pieces showing targets
     this.pieceGroup = new Group();
     this.markerGroup = new Group();
-    this.scene.add(this.boardGroup, this.pieceGroup, this.markerGroup);
+    this.scene.add(this.boardGroup, this.goalGroup, this.pieceGroup, this.markerGroup);
 
     this.squares = []; // { mesh, c, r }
     this.pieceMeshes = new Map(); // id -> { group, type, c, r }
+    this.ghosts = []; // { group, mat, type, c, r }
     this.markers = [];
     this.selectedId = null;
     this.animations = [];
@@ -135,10 +137,12 @@ export class Studio {
     this.rows = state.rows;
 
     this.boardGroup.clear();
+    this.goalGroup.clear();
     this.pieceGroup.clear();
     this.markerGroup.clear();
     this.squares = [];
     this.pieceMeshes.clear();
+    this.ghosts = [];
     this.markers = [];
     this.selectedId = null;
 
@@ -184,6 +188,45 @@ export class Studio {
     for (const p of state.pieces) this._addPiece(p);
   }
 
+  /** Show translucent "ghost" pieces on the squares the card targets. */
+  showGoal(goal) {
+    this.goalGroup.clear();
+    this.ghosts = [];
+    for (const g of goal) {
+      const mat = new MeshStandardMaterial({
+        color: 0xffce4d,
+        emissive: new Color(0x6b4f12),
+        transparent: true,
+        opacity: 0.28,
+        roughness: 0.4,
+        metalness: 0.1,
+        depthWrite: false,
+      });
+      const group = buildPiece(g.type, mat);
+      const pos = this._squareToWorld(g.c, g.r);
+      group.position.set(pos.x, 0.04, pos.z);
+      this.goalGroup.add(group);
+      this.ghosts.push({ group, mat, type: g.type, c: g.c, r: g.r });
+
+      // A gold outline ring on the target square.
+      const ring = new Mesh(
+        new RingGeometry(0.34, 0.44, 28),
+        new MeshBasicMaterial({ color: 0xffce4d, side: DoubleSide, transparent: true, opacity: 0.55 }),
+      );
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.set(pos.x, 0.075, pos.z);
+      this.goalGroup.add(ring);
+    }
+  }
+
+  /** Fade out ghosts whose target square is now satisfied. */
+  updateGoalProgress(satisfied) {
+    for (const gh of this.ghosts) {
+      const done = satisfied.some((s) => s.type === gh.type && s.c === gh.c && s.r === gh.r);
+      gh.group.visible = !done;
+    }
+  }
+
   _addPiece(p) {
     const mat = new MeshStandardMaterial({
       color: COL_PIECE,
@@ -225,14 +268,14 @@ export class Studio {
     for (const s of this.squares) s.mesh.material.color.copy(s.mesh.userData.baseColor);
   }
 
-  /** Highlight capture-target squares; `targets` is [{c,r}]. */
+  /** Highlight legal destination squares; `targets` is [{c,r}]. */
   showTargets(targets) {
     this.clearMarkers();
     for (const t of targets) {
       const pos = this._squareToWorld(t.c, t.r);
       const ring = new Mesh(
-        new RingGeometry(0.3, 0.42, 28),
-        new MeshBasicMaterial({ color: 0xffce4d, side: DoubleSide, transparent: true, opacity: 0.95 }),
+        new RingGeometry(0.28, 0.4, 28),
+        new MeshBasicMaterial({ color: 0x57c785, side: DoubleSide, transparent: true, opacity: 0.9 }),
       );
       ring.rotation.x = -Math.PI / 2;
       ring.position.set(pos.x, 0.07, pos.z);
@@ -250,11 +293,10 @@ export class Studio {
 
   // --- animation ------------------------------------------------------------
 
-  /** Animate a capture; resolves when the motion finishes. */
+  /** Animate a piece sliding to its destination; resolves when it finishes. */
   animateMove(move) {
     return new Promise((resolve) => {
       const moverRec = this.pieceMeshes.get(move.pieceId);
-      const targetRec = this.pieceMeshes.get(move.targetId);
       if (!moverRec) return resolve();
 
       const from = moverRec.group.position.clone();
@@ -274,10 +316,6 @@ export class Studio {
           moverRec.group.position.copy(to);
           moverRec.c = move.to.c;
           moverRec.r = move.to.r;
-          if (targetRec) {
-            this.pieceGroup.remove(targetRec.group);
-            this.pieceMeshes.delete(move.targetId);
-          }
           resolve();
         },
       });

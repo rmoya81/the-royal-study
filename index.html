@@ -34,7 +34,8 @@
           <div class="stat"><span class="stat__label">Nivel</span><span id="stat-level" class="stat__value">—</span></div>
           <div class="stat"><span class="stat__label">Estudio</span><span id="stat-puzzle" class="stat__value">—</span></div>
           <div class="stat"><span class="stat__label">Jugadas</span><span id="stat-moves" class="stat__value">0</span></div>
-          <div class="stat"><span class="stat__label">Par</span><span id="stat-par" class="stat__value">—</span></div>
+          <div class="stat"><span class="stat__label">Mínimo</span><span id="stat-par" class="stat__value">—</span></div>
+          <div class="stat"><span class="stat__label">⏳ Tiempo</span><span id="stat-time" class="stat__value">0:00</span></div>
           <div class="stat"><span class="stat__label">Puntos</span><span id="stat-score" class="stat__value">0</span></div>
         </div>
       </header>
@@ -57,16 +58,20 @@
         <div class="modal__card">
           <h2>Cómo jugar</h2>
           <p>
-            <strong>The Royal Study</strong> es un estudio de ajedrez solitario. En el tablero hay
-            varias piezas: <em>cada jugada debe capturar otra pieza</em>.
+            <strong>The Royal Study</strong> se juega en un tablero de <strong>3×3</strong>. Mueve
+            las piezas hasta que cada una ocupe la casilla que marca la carta
+            (las <em>siluetas doradas</em>), en el <strong>menor número de jugadas</strong> y antes
+            de que se agote el <strong>reloj de arena</strong>.
           </p>
           <ul>
-            <li>Toca una pieza para seleccionarla; las capturas válidas se iluminan en oro.</li>
-            <li>Toca una casilla iluminada para capturar.</li>
-            <li>Resuelves el estudio cuando queda <strong>una sola pieza</strong>.</li>
-            <li>El <strong>Par</strong> es el mínimo de jugadas. Resolverlo en el par da más puntos.</li>
+            <li><strong>No se captura</strong>: solo te mueves a casillas vacías.</li>
+            <li>Las piezas no saltan sobre otras… <strong>excepto el caballo</strong>.</li>
+            <li>El <strong>alfil</strong> siempre permanece en casillas oscuras.</li>
+            <li>El <strong>caballo</strong> no puede situarse en la casilla central.</li>
+            <li>Toca una pieza para ver sus movimientos (en verde) y toca una casilla para moverla.</li>
+            <li>El <strong>Mínimo</strong> es el número óptimo de jugadas: igualarlo da +2 puntos.</li>
           </ul>
-          <p class="muted">Atajos: arrastra para orbitar · rueda para zoom · U deshacer · R reiniciar · H pista.</p>
+          <p class="muted">Atajos: arrastra para orbitar · rueda para zoom · U deshacer · R reiniciar · H pista · ←/→ cambiar estudio.</p>
           <button id="help-close" class="btn btn--primary">¡Entendido!</button>
         </div>
       </div>

@@ -1,51 +1,67 @@
-// Depth-first solver for solitaire-chess studies.
+// Breadth-first solver for "The Royal Study".
 //
-// Because every move removes exactly one piece, a study with N pieces is solved
-// in exactly N-1 moves when solvable. We use DFS to (a) verify a puzzle is
-// solvable and (b) produce a concrete winning line used for hints.
+// A study is a start arrangement plus a goal arrangement. Because the board is
+// tiny (3x3) and pieces are few, BFS over board arrangements finds the true
+// minimum number of moves (the "par") and a concrete shortest line for hints.
 
 import { allMoves, applyMove, cloneState, isSolved } from './engine.js';
 
+// Order-independent signature of a position (piece type + square).
+function key(state) {
+  return state.pieces
+    .map((p) => `${p.type}${p.c},${p.r}`)
+    .sort()
+    .join('|');
+}
+
 /**
- * Return a winning sequence of moves from `state`, or null if unsolvable.
- * Each returned move is the same shape produced by allMoves().
+ * Shortest winning line from `state` to `goal`, as an array of moves, or null.
+ * Each move is { pieceId, from, to } valid in the position it is applied to.
  */
-export function solve(state) {
-  const seen = new Set();
+export function solve(state, goal, limit = 200000) {
+  if (isSolved(state, goal)) return [];
+  const start = cloneState(state);
+  const queue = [start];
+  const prev = new Map(); // key -> { parentKey, move }
+  const seen = new Set([key(start)]);
+  const byKey = new Map([[key(start), start]]);
 
-  function key(s) {
-    // Order-independent signature of the position.
-    return s.pieces
-      .map((p) => `${p.type}${p.c},${p.r}`)
-      .sort()
-      .join('|');
-  }
-
-  function dfs(s) {
-    if (isSolved(s)) return [];
-    const k = key(s);
-    if (seen.has(k)) return null;
-    seen.add(k);
-
-    for (const move of allMoves(s)) {
-      const next = applyMove(cloneState(s), move);
-      const rest = dfs(next);
-      if (rest) return [move, ...rest];
+  let head = 0;
+  while (head < queue.length && seen.size < limit) {
+    const cur = queue[head++];
+    for (const move of allMoves(cur)) {
+      const next = applyMove(cloneState(cur), move);
+      const k = key(next);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      prev.set(k, { parentKey: key(cur), move });
+      byKey.set(k, next);
+      if (isSolved(next, goal)) return reconstruct(prev, k);
+      queue.push(next);
     }
-    return null;
   }
-
-  return dfs(cloneState(state));
+  return null;
 }
 
-/** The next single best move from the current position, or null. */
-export function hintMove(state) {
-  const line = solve(state);
-  return line && line.length ? line[0] : null;
+function reconstruct(prev, endKey) {
+  const line = [];
+  let k = endKey;
+  while (prev.has(k)) {
+    const { parentKey, move } = prev.get(k);
+    line.push(move);
+    k = parentKey;
+  }
+  return line.reverse();
 }
 
-/** Minimum number of moves to solve (N-1 when solvable, else null). */
-export function minMoves(state) {
-  const line = solve(state);
+/** Minimum number of moves to reach the goal, or null if unreachable. */
+export function minMoves(state, goal) {
+  const line = solve(state, goal);
   return line ? line.length : null;
+}
+
+/** The next move on a shortest path to the goal, or null. */
+export function hintMove(state, goal) {
+  const line = solve(state, goal);
+  return line && line.length ? line[0] : null;
 }
