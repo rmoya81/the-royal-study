@@ -538,8 +538,25 @@ $('btn-prev').onclick = goPrev;
 $('btn-concede').onclick = () => {
   if (g.mode === 'duo' && !g.locked) duoResolve(false);
 };
-$('btn-help').onclick = () => ($('help').hidden = false);
-$('help-close').onclick = () => ($('help').hidden = true);
+// Help modal — tied to browser history so the Back button (or back gesture)
+// closes the help instead of leaving the site.
+function openHelp() {
+  if (!$('help').hidden) return;
+  $('help').hidden = false;
+  history.pushState({ modal: 'help' }, '');
+}
+function closeHelp() {
+  if ($('help').hidden) return;
+  $('help').hidden = true;
+  // Unwind the history entry we added when opening (if it's still on top).
+  if (history.state && history.state.modal === 'help') history.back();
+}
+$('btn-help').onclick = openHelp;
+$('help-close').onclick = closeHelp;
+window.addEventListener('popstate', () => {
+  // Any back navigation first dismisses the help overlay if it's open.
+  if (!$('help').hidden) $('help').hidden = true;
+});
 
 $('btn-rot-cw').onclick = () => transformCard('cw');
 $('btn-rot-ccw').onclick = () => transformCard('ccw');
@@ -563,8 +580,8 @@ window.addEventListener('keydown', (e) => {
     case 'h': hint(); break;
     case 'arrowright': if (g.mode === 'solo') goNext(); break;
     case 'arrowleft': if (g.mode === 'solo') goPrev(); break;
-    case '?': $('help').hidden = false; break;
-    case 'escape': $('help').hidden = true; break;
+    case '?': openHelp(); break;
+    case 'escape': closeHelp(); break;
   }
 });
 
