@@ -27,6 +27,7 @@ import {
   DoubleSide,
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { buildPiece, PIECE_HEIGHT } from './pieces.js';
 
 const COL_LIGHT = 0xead7b0; // maple
@@ -77,6 +78,7 @@ export class Studio {
     this.markers = [];
     this.selectedId = null;
     this.animations = [];
+    this.modelGeo = null; // { K, Q, R, B, N, P } geometries from a loaded GLB
 
     this.raycaster = new Raycaster();
     this.pointer = new Vector2();
@@ -124,6 +126,49 @@ export class Studio {
     table.position.y = -0.26;
     table.receiveShadow = true;
     this.scene.add(table);
+  }
+
+  /**
+   * Load a GLB whose nodes are named K/Q/R/B/N/P and use its meshes for the
+   * pieces. Resolves whether or not it succeeds — on failure the procedural
+   * pieces stay in use. A drop-in user model with the same node names works too.
+   */
+  async loadModels(url) {
+    try {
+      const gltf = await new GLTFLoader().loadAsync(url);
+      const geo = {};
+      const keys = ['K', 'Q', 'R', 'B', 'N', 'P'];
+      gltf.scene.traverse((o) => {
+        if (!o.isMesh) return;
+        const name = (o.name || '').toUpperCase();
+        const key = keys.find((k) => name === k || name.startsWith(k));
+        if (key && !geo[key]) {
+          o.geometry.computeVertexNormals();
+          geo[key] = o.geometry; // geometry is pre-centred/scaled at build time
+
+        }
+      });
+      if (Object.keys(geo).length >= 5) {
+        this.modelGeo = geo;
+        return true;
+      }
+    } catch (e) {
+      console.warn('Pieces model failed to load; using procedural set.', e);
+    }
+    return false;
+  }
+
+  /** A piece object3D for `type`, from the loaded model if present, else procedural. */
+  _pieceObject(type, material) {
+    if (this.modelGeo && this.modelGeo[type]) {
+      const mesh = new Mesh(this.modelGeo[type], material);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      const group = new Group();
+      group.add(mesh);
+      return group;
+    }
+    return buildPiece(type, material);
   }
 
   /** (col,row) -> world XZ, centered on origin for the current board size. */
@@ -202,7 +247,7 @@ export class Studio {
         metalness: 0.1,
         depthWrite: false,
       });
-      const group = buildPiece(g.type, mat);
+      const group = this._pieceObject(g.type, mat);
       const pos = this._squareToWorld(g.c, g.r);
       group.position.set(pos.x, 0.04, pos.z);
       this.goalGroup.add(group);
@@ -234,7 +279,7 @@ export class Studio {
       metalness: 0.05,
       emissive: new Color(0x000000),
     });
-    const group = buildPiece(p.type, mat);
+    const group = this._pieceObject(p.type, mat);
     const pos = this._squareToWorld(p.c, p.r);
     group.position.set(pos.x, 0.04, pos.z);
     group.userData = { id: p.id, type: p.type };

@@ -572,7 +572,13 @@ window.addEventListener('keydown', (e) => {
 //  Boot
 // ===========================================================================
 
-loadStudy();
-requestAnimationFrame(() => {
-  setTimeout(() => $('loader').classList.add('loader--hidden'), 350);
-});
+// Load the GLB piece set first (falls back to procedural pieces on failure),
+// then start the first study and reveal the scene.
+studio
+  .loadModels(`${import.meta.env.BASE_URL}models/pieces.glb`)
+  .finally(() => {
+    loadStudy();
+    requestAnimationFrame(() => {
+      setTimeout(() => $('loader').classList.add('loader--hidden'), 350);
+    });
+  });

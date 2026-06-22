@@ -15,9 +15,9 @@ jugadas** y antes de que se agote el **reloj de arena**.
 ## ✨ Características
 
 - **Entorno 3D** con [Three.js](https://threejs.org): tablero de madera 3×3,
-  piezas procedurales ornamentadas (rey, dama, torre, alfil, caballo), siluetas
-  doradas que marcan el objetivo de la carta, iluminación con sombras suaves y
-  cámara orbital.
+  **piezas Staunton 3D talladas** (set de modelos reales), siluetas doradas que
+  marcan el objetivo de la carta, iluminación con sombras suaves y cámara
+  orbital. Si el modelo no carga, hay un **set procedural de respaldo**.
 - **Reglamento fiel a Philos**: sin capturas, sin saltar (salvo el caballo),
   alfil en casillas oscuras, caballo fuera del centro, y **reloj de arena**.
 - **Dos modos**: campaña en **solitario** (con giros/reflejos de carta en los
@@ -97,13 +97,37 @@ src/
     └── pieces.js      Geometría procedural de las piezas
 ```
 
+## ♟️ Piezas 3D y modelo personalizado
+
+Las piezas se cargan desde `public/models/pieces.glb`, un GLB cuyos nodos se
+llaman `K`, `Q`, `R`, `B`, `N`, `P`. El cargador (`src/three/scene.js`,
+`loadModels`) usa ese modelo y, si falla, recurre a las piezas procedurales de
+`src/three/pieces.js`.
+
+**Usar tu propio set 3D**: sustituye `public/models/pieces.glb` por tu GLB con
+esos mismos nombres de nodo (orientado **Y-up**, con la base en `y=0` y centrado
+en XZ). No hace falta tocar código.
+
+El GLB incluido se genera a partir de un set Staunton en STL con el script:
+
+```bash
+python3 scripts/build-pieces-glb.py   # decima, reorienta y exporta el GLB
+```
+
 ## 📦 Publicación
 
 Al hacer *push* a `main`, el workflow de GitHub Actions
 (`.github/workflows/deploy.yml`) compila el proyecto y lo publica en
 **GitHub Pages**. Actívalo en *Settings → Pages → Source: GitHub Actions*.
 
+## 🙏 Créditos
+
+- Modelos de las piezas: **[Staunton-Pieces](https://github.com/clarkerubber/Staunton-Pieces)**
+  de clarkerubber, bajo licencia **MIT** (convertidos de STL a GLB optimizado).
+- Motor 3D: [Three.js](https://threejs.org).
+
 ## 📄 Licencia
 
 [MIT](LICENSE) © rmoya81. Inspirado en *The Royal Study* de Philos; este es un
-proyecto independiente sin afiliación con la marca.
+proyecto independiente sin afiliación con la marca. Los modelos de las piezas
+conservan su licencia MIT original (ver Créditos).
