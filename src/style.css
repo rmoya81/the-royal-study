@@ -1,0 +1,224 @@
+:root {
+  --bg: #0d2b3e;
+  --ink: #f4ecdc;
+  --gold: #e7b94d;
+  --green: #57c785;
+  --panel: rgba(8, 22, 32, 0.72);
+  --panel-brd: rgba(231, 185, 77, 0.25);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
+
+html, body, #app {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#scene {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+/* ---- top bar ---- */
+.topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(180deg, rgba(5, 16, 24, 0.85), rgba(5, 16, 24, 0));
+  pointer-events: none;
+  flex-wrap: wrap;
+}
+
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand__mark { color: var(--gold); font-size: 26px; line-height: 1; }
+.brand__name {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  font-size: 19px;
+}
+
+.stats { display: flex; gap: 8px; flex-wrap: wrap; }
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 54px;
+  padding: 6px 10px;
+  background: var(--panel);
+  border: 1px solid var(--panel-brd);
+  border-radius: 10px;
+  backdrop-filter: blur(6px);
+}
+.stat__label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.65; }
+.stat__value { font-family: 'Cinzel', serif; font-size: 18px; color: var(--gold); }
+
+/* ---- toolbar ---- */
+.toolbar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+  background: linear-gradient(0deg, rgba(5, 16, 24, 0.9), rgba(5, 16, 24, 0));
+  flex-wrap: wrap;
+}
+
+.btn {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--panel-brd);
+  border-radius: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.btn:hover { background: rgba(231, 185, 77, 0.16); border-color: var(--gold); }
+.btn:active { transform: translateY(1px) scale(0.98); }
+.btn--ghost { min-width: 44px; }
+.btn--primary {
+  background: var(--gold);
+  color: #2a1c08;
+  border-color: var(--gold);
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px;
+}
+
+/* ---- banner ---- */
+.banner {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.9);
+  padding: 14px 22px;
+  background: var(--panel);
+  border: 1px solid var(--panel-brd);
+  border-radius: 14px;
+  font-family: 'Cinzel', serif;
+  font-size: 18px;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  max-width: 86vw;
+}
+.banner--show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.banner--win { border-color: var(--green); color: var(--green); }
+.banner--warn { border-color: #e08a3c; color: #f0b070; }
+.banner--info { color: var(--ink); }
+
+/* ---- modal ---- */
+.modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(3, 10, 16, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 20;
+  padding: 20px;
+}
+.modal[hidden] { display: none; }
+.modal__card {
+  max-width: 460px;
+  background: #0f2533;
+  border: 1px solid var(--panel-brd);
+  border-radius: 18px;
+  padding: 26px;
+}
+.modal__card h2 { font-family: 'Cinzel', serif; color: var(--gold); margin-bottom: 12px; }
+.modal__card p { margin-bottom: 10px; line-height: 1.5; font-size: 15px; }
+.modal__card ul { margin: 0 0 10px 18px; line-height: 1.6; font-size: 15px; }
+.modal__card .muted { opacity: 0.6; font-size: 13px; }
+
+/* ---- loader ---- */
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: radial-gradient(circle at 50% 40%, #14384f, #081722);
+  transition: opacity 0.6s ease;
+}
+.loader--hidden { opacity: 0; pointer-events: none; }
+.loader__crown { font-size: 56px; color: var(--gold); animation: float 2s ease-in-out infinite; }
+.loader__title { font-family: 'Cinzel', serif; font-size: 26px; letter-spacing: 1px; }
+.loader__bar { width: 180px; height: 4px; background: rgba(255,255,255,0.12); border-radius: 4px; overflow: hidden; }
+.loader__bar span { display: block; height: 100%; width: 40%; background: var(--gold); border-radius: 4px; animation: slide 1.1s ease-in-out infinite; }
+
+@keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes slide { 0% { transform: translateX(-120%); } 100% { transform: translateX(320%); } }
+
+/* ---- mode chips ---- */
+.modes { display: flex; gap: 6px; margin-left: 8px; pointer-events: auto; }
+.chip {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--panel-brd);
+  border-radius: 999px;
+  padding: 5px 11px;
+  cursor: pointer;
+}
+.chip--on { background: var(--gold); color: #2a1c08; border-color: var(--gold); }
+
+.stat--p1 .stat__value { color: #6fb1ff; }
+.stat--p2 .stat__value { color: #f0a35a; }
+
+/* ---- transform group ---- */
+.tgroup { display: inline-flex; gap: 6px; padding-left: 6px; border-left: 1px solid var(--panel-brd); }
+.tgroup[hidden] { display: none; }
+
+/* ---- bid overlay ---- */
+.bid__card { text-align: center; max-width: 420px; }
+.bid__stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin: 18px 0;
+}
+.bid__stepper span {
+  font-family: 'Cinzel', serif;
+  font-size: 44px;
+  color: var(--gold);
+  min-width: 70px;
+}
+.bid__stepper .btn { font-size: 24px; width: 52px; }
+.bid__actions { display: flex; flex-direction: column; gap: 8px; }
+.bid__actions .btn { width: 100%; }
+
+@media (max-width: 560px) {
+  .modes { margin-left: 0; }
+  .brand__name { font-size: 16px; }
+  .stat { min-width: 46px; padding: 5px 7px; }
+  .stat__value { font-size: 15px; }
+  .btn { font-size: 13px; padding: 9px 11px; }
+}

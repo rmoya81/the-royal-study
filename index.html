@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#0d2b3e" />
+    <meta name="description" content="The Royal Study — resuelve estudios de ajedrez en 3D con el mínimo número de movimientos. Inspirado en el rompecabezas de Philos." />
+    <title>The Royal Study · Chess Puzzle 3D</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene"></canvas>
+
+      <!-- Loading veil -->
+      <div id="loader" class="loader">
+        <div class="loader__crown">♛</div>
+        <div class="loader__title">The Royal Study</div>
+        <div class="loader__bar"><span></span></div>
+      </div>
+
+      <!-- Top bar -->
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand__mark">♛</span>
+          <span class="brand__name">The Royal Study</span>
+          <div class="modes">
+            <button id="mode-solo" class="chip chip--on">Solo</button>
+            <button id="mode-duo" class="chip">2 Jugadores</button>
+          </div>
+        </div>
+
+        <!-- Solo stats -->
+        <div id="stats-solo" class="stats">
+          <div class="stat"><span class="stat__label">Nivel</span><span id="stat-level" class="stat__value">—</span></div>
+          <div class="stat"><span class="stat__label">Estudio</span><span id="stat-puzzle" class="stat__value">—</span></div>
+          <div class="stat"><span class="stat__label">Jugadas</span><span id="stat-moves" class="stat__value">0</span></div>
+          <div class="stat"><span class="stat__label">Mínimo</span><span id="stat-par" class="stat__value">—</span></div>
+          <div class="stat"><span class="stat__label">⏳ Tiempo</span><span id="stat-time" class="stat__value">0:00</span></div>
+          <div class="stat"><span class="stat__label">Puntos</span><span id="stat-score" class="stat__value">0</span></div>
+        </div>
+
+        <!-- Duo stats -->
+        <div id="stats-duo" class="stats" hidden>
+          <div class="stat stat--p1"><span class="stat__label">Jugador 1</span><span id="duo-s1" class="stat__value">0</span></div>
+          <div class="stat stat--p2"><span class="stat__label">Jugador 2</span><span id="duo-s2" class="stat__value">0</span></div>
+          <div class="stat"><span class="stat__label">Apuesta</span><span id="duo-bid" class="stat__value">—</span></div>
+          <div class="stat"><span class="stat__label">Jugadas</span><span id="duo-moves" class="stat__value">0</span></div>
+          <div class="stat"><span class="stat__label">⏳ Tiempo</span><span id="duo-time" class="stat__value">0:00</span></div>
+        </div>
+      </header>
+
+      <!-- Bottom toolbar -->
+      <footer class="toolbar">
+        <button id="btn-undo" class="btn" title="Deshacer (U)">↩ Deshacer</button>
+        <button id="btn-reset" class="btn" title="Reiniciar (R)">⟳ Reiniciar</button>
+        <button id="btn-hint" class="btn" title="Pista (H)">💡 Pista</button>
+        <!-- Card transforms (levels 2/3 and duo) -->
+        <span id="transform-group" class="tgroup" hidden>
+          <button id="btn-rot-ccw" class="btn btn--ghost" title="Girar carta 90° (1 jugada)">↺</button>
+          <button id="btn-rot-cw" class="btn btn--ghost" title="Girar carta 90° (1 jugada)">↻</button>
+          <button id="btn-mir-h" class="btn btn--ghost" title="Reflejar carta (1 jugada)">⇄</button>
+          <button id="btn-mir-v" class="btn btn--ghost" title="Reflejar carta (1 jugada)">⇅</button>
+        </span>
+        <button id="btn-concede" class="btn" title="Rendirse" hidden>🏳 Rendirse</button>
+        <button id="btn-prev" class="btn btn--ghost" title="Anterior">◀</button>
+        <button id="btn-next" class="btn btn--ghost" title="Siguiente">▶</button>
+        <button id="btn-help" class="btn btn--ghost" title="Cómo jugar (?)">?</button>
+      </footer>
+
+      <!-- Duo bidding overlay -->
+      <div id="bid" class="modal" hidden>
+        <div class="modal__card bid__card">
+          <h2 id="bid-title">Apuesta de jugadas</h2>
+          <p id="bid-text" class="muted"></p>
+          <div class="bid__stepper">
+            <button id="bid-minus" class="btn btn--ghost">−</button>
+            <span id="bid-value">3</span>
+            <button id="bid-plus" class="btn btn--ghost">+</button>
+          </div>
+          <div class="bid__actions">
+            <button id="bid-accept" class="btn">Aceptar reto</button>
+            <button id="bid-lower" class="btn">Puedo en menos…</button>
+            <button id="bid-confirm" class="btn btn--primary">Apostar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Message / banner -->
+      <div id="banner" class="banner"></div>
+
+      <!-- Help modal -->
+      <div id="help" class="modal" hidden>
+        <div class="modal__card">
+          <h2>Cómo jugar</h2>
+          <p>
+            <strong>The Royal Study</strong> se juega en un tablero de <strong>3×3</strong>. Mueve
+            las piezas hasta que cada una ocupe la casilla que marca la carta
+            (las <em>siluetas doradas</em>), en el <strong>menor número de jugadas</strong> y antes
+            de que se agote el <strong>reloj de arena</strong>.
+          </p>
+          <ul>
+            <li><strong>No se captura</strong>: solo te mueves a casillas vacías.</li>
+            <li>Las piezas no saltan sobre otras… <strong>excepto el caballo</strong>.</li>
+            <li>El <strong>alfil</strong> siempre permanece en casillas oscuras.</li>
+            <li>El <strong>caballo</strong> no puede situarse en la casilla central.</li>
+            <li>Toca una pieza para ver sus movimientos (en verde) y toca una casilla para moverla.</li>
+            <li>El <strong>Mínimo</strong> es el número óptimo de jugadas: igualarlo da +2 puntos.</li>
+          </ul>
+          <p>
+            <strong>Niveles 2 y 3 — transformar la carta:</strong> puedes <strong>girar</strong>
+            (↺ ↻) o <strong>reflejar</strong> (⇄ ⇅) la carta objetivo. Cada acción cuenta como
+            <strong>una jugada</strong>, pero a veces reduce el total. ¡A menudo es la clave!
+          </p>
+          <p>
+            <strong>2 Jugadores (puja):</strong> el Jugador 1 apuesta en cuántas jugadas lo
+            resuelve. El Jugador 2 puede <em>aceptar</em> o <em>apostar menos</em>. Quien tenga la
+            apuesta más baja debe resolverlo dentro de esas jugadas: si lo logra gana el punto, si
+            no, el punto es para el rival. Las piezas se quedan donde acaben. ¡Gana quien llega a 6!
+          </p>
+          <p class="muted">Atajos: arrastra para orbitar · rueda para zoom · U deshacer · R reiniciar · H pista · ←/→ cambiar estudio.</p>
+          <button id="help-close" class="btn btn--primary">¡Entendido!</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
